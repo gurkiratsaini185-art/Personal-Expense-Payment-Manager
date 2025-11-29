@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Expense & Payment Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            width: calc(100% - 22px);
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background: #fff;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .expense-details {
+            flex-grow: 1;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .actions button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+        #total {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+        .category-filter {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Personal Expense & Payment Manager</h1>
+    <form id="expenseForm">
+        <input type="text" id="description" placeholder="Expense/Payment description" required>
+        <input type="number" id="amount" placeholder="Amount" step="0.01" required>
+        <select id="category">
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Bills">Bills</option>
+            <option value="Other">Other</option>
+        </select>
+        <input type="date" id="date" required>
+        <select id="status">
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+        </select>
+        <button type="submit">Add Expense/Payment</button>
+    </form>
+    
+    <div class="category-filter">
+        <label for="filter">Filter by Category:</label>
+        <select id="filter">
+            <option value="All">All</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Bills">Bills</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+    
+    <ul id="expenseList"></ul>
+    <div id="total">Total Spent: $0.00</div>
+
+    <script>
+        const form = document.getElementById('expenseForm');
+        const descriptionInput = document.getElementById('description');
+        const amountInput = document.getElementById('amount');
+        const categoryInput = document.getElementById('category');
+        const dateInput = document.getElementById('date');
+        const statusInput = document.getElementById('status');
+        const expenseList = document.getElementById('expenseList');
+        const totalDisplay = document.getElementById('total');
+        const filterSelect = document.getElementById('filter');
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+        // Set default date to today
+        dateInput.valueAsDate = new Date();
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const description = descriptionInput.value;
+            const amount = parseFloat(amountInput.value);
+            const category = categoryInput.value;
+            const date = dateInput.value;
+            const status = statusInput.value;
+
+            if (description && amount > 0) {
+                expenses.push({ description, amount, category, date, status, id: Date.now() });
+                total += amount;
+                saveToLocalStorage();
+                updateDisplay();
+                form.reset();
+                dateInput.valueAsDate = new Date();
+            }
+        });
+
+        filterSelect.addEventListener('change', updateDisplay);
+
+        function updateDisplay() {
+            const filter = filterSelect.value;
+            expenseList.innerHTML = '';
+            const filteredExpenses = filter === 'All' ? expenses : expenses.filter(exp => exp.category === filter);
+            
+            filteredExpenses.forEach((expense, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="expense-details">
+                        <strong>${expense.description}</strong> - $${expense.amount.toFixed(2)} (${expense.category})<br>
+                        Date: ${expense.date} | Status: ${expense.status}
+                    </div>
+                    <div class="actions">
+                        <button onclick="editExpense(${expense.id})">Edit</button>
+                        <button onclick="removeExpense(${expense.id})">Remove</button>
+                    </div>
+                `;
+                expenseList.appendChild(li);
+            });
+            totalDisplay.textContent = `Total Spent: $${total.toFixed(2)}`;
+        }
+
+        function removeExpense(id) {
+            const index = expenses.findIndex(exp => exp.id === id);
+            total -= parseFloat(expenses[index].amount);
+            expenses.splice(index, 1);
+            saveToLocalStorage();
+            updateDisplay();
+        }
+
+        function editExpense(id) {
+            const expense = expenses.find(exp => exp.id === id);
+            descriptionInput.value = expense.description;
+            amountInput.value = expense.amount;
+            categoryInput.value = expense.category;
+            dateInput.value = expense.date;
+            statusInput.value = expense.status;
+            removeExpense(id); // Remove old one, will be re-added on submit
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+        }
+
+        updateDisplay(); // Initial display
+    </script>
+</body>
+</html>
